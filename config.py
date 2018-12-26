@@ -22,8 +22,7 @@ class BaseConfig:
     LOGGING_LEVEL = logging.DEBUG
     SQLALCHEMY_ECHO = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or SQLITE_DB
-    # CELERY_TIMEZONE = 'Europe/Berlin'
-    BROKER_URL = 'redis://localhost:6379/0'
+    BROKER_URL = os.environ.get('REDIS_URL') or 'redis://redis:6379/0'
     CELERY_SEND_TASK_SENT_EVENT = True
     CELERY_BROKER_URL = BROKER_URL
     CELERY_RESULT_BACKEND = BROKER_URL

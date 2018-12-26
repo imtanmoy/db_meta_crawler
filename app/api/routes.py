@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, request, url_for
+from flask import Blueprint, jsonify, request, url_for, current_app, make_response
 from app.tasks.task import long_task, reverse_messages
 from app.models.message import Message
 from app import db
@@ -67,8 +67,27 @@ def taskstatus(task_id):
     return jsonify(response)
 
 
-@api_blueprint.route('/messages/')
-def messages():
+@api_blueprint.route('/messages/', methods=["GET"])
+def get_messages():
     task = reverse_messages.apply_async()
     messages = Message.query.all()
     return jsonify([message.text for message in messages])
+
+
+@api_blueprint.route('/messages/', methods=["POST"])
+def post_messages():
+    post_data = request.get_json()
+    try:
+        message = Message(text=post_data['text'])
+        db.session.add(message)
+        db.session.commit()
+        print('database added')
+        return make_response(jsonify(message.text)), 201
+    except Exception as e:
+        current_app.logger.error(str(e))
+        response_object = {
+            'status': 'fail',
+            'message': 'Some error occurred. Please try again.',
+            'reason': f'{e}'
+        }
+        return make_response(jsonify(response_object)), 401
