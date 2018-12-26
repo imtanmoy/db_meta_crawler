@@ -1,5 +1,6 @@
 import random
 import time
+import pprint
 
 from celery.signals import task_postrun
 from celery.utils.log import get_task_logger
@@ -50,6 +51,13 @@ def reverse_messages():
         words = message.text.split()
         message.text = " ".join(reversed(words))
         db.session.commit()
+
+
+@celery.task
+def save_metadata(db_id):
+    """Reverse all messages in DB"""
+    print('calling save meta data')
+    pprint.pprint(db_id)
 
 
 @task_postrun.connect

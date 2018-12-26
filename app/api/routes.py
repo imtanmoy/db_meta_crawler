@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify, request, url_for, current_app, make_response
-from app.tasks.task import long_task, reverse_messages
+
+from app.api.dbconnection.DBConnectionAPI import dbconnection_view
+from app.tasks.task import long_task, reverse_messages, save_metadata
 from app.models.message import Message
 from app import db
 
@@ -11,6 +13,10 @@ api_blueprint = Blueprint('api', __name__)
 @api_blueprint.before_app_first_request
 def init_db():
     db.create_all()
+
+
+api_blueprint.add_url_rule('/connection', view_func=dbconnection_view, methods=['POST'])
+api_blueprint.add_url_rule('/connection/<int:db_id>', view_func=dbconnection_view, methods=['GET', 'PUT', 'DELETE'])
 
 
 @api_blueprint.route('/status', methods=['GET'])
