@@ -60,6 +60,7 @@ services:
     environment:
       - FLASK_APP=flasky.py
       - FLASK_ENV=development
+      - DATABASE_URL=mysql://user:password@db:3306/participants
       - REDIS_URL=redis://redis:6379/0
     restart: unless-stopped
     depends_on:
