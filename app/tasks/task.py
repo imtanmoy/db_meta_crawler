@@ -6,6 +6,7 @@ from celery.signals import task_postrun
 from celery.utils.log import get_task_logger
 
 from app import celery, db
+from app.models.database import Database
 from app.models.message import Message
 
 logger = get_task_logger(__name__)
@@ -58,6 +59,10 @@ def save_metadata(db_id):
     """Reverse all messages in DB"""
     print('calling save meta data')
     pprint.pprint(db_id)
+    database = Database.query.get(db_id)
+    print(database)
+    database.dbname = 'change'
+    db.session.commit()
 
 
 @task_postrun.connect

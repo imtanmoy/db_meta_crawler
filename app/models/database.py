@@ -55,6 +55,7 @@ class Database(db.Model):
             'password': self.password,
             'host': self.hostname,
             'port': 3306,
+            'dbname': self.dbname,
             # 'tables': [table.to_json for table in self.tables]
         }
         return json_database
