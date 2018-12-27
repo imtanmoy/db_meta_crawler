@@ -139,3 +139,4 @@ ENV/
 test.db
 flask_auth.db
 .vscode/
+db/
