@@ -75,8 +75,8 @@ def taskstatus(task_id):
 
 @api_blueprint.route('/messages/', methods=["GET"])
 def get_messages():
-    task = reverse_messages.apply_async()
     messages = Message.query.all()
+    task = reverse_messages.apply_async()
     return jsonify([message.text for message in messages])
 
 
@@ -87,7 +87,7 @@ def post_messages():
         message = Message(text=post_data['text'])
         db.session.add(message)
         db.session.commit()
-        print('database added')
+        task = reverse_messages.apply_async()
         return make_response(jsonify(message.text)), 201
     except Exception as e:
         current_app.logger.error(str(e))

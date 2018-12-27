@@ -19,6 +19,9 @@ def create_app(config_name=None):
     app.config.from_object(config[config_name])
     celery.config_from_object(app.config)
 
+    print(app.config['SQLALCHEMY_DATABASE_URI'])
+    print(os.environ.get('DATABASE_URL'))
+
     # set config
     configure_app(app)
     # set up extensions

@@ -1,8 +1,17 @@
+import os
+from dotenv import load_dotenv
 from celery import Celery
-from celery.schedules import crontab
-
+# from celery.schedules import crontab
 from app import create_app
-from app.tasks.task import log, reverse_messages
+
+# from app.tasks.task import log, reverse_messages
+
+
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
+
+app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 
 
 def create_celery(app):
@@ -23,8 +32,7 @@ def create_celery(app):
     return celery
 
 
-flask_app = create_app()
-celery = create_celery(flask_app)
+celery = create_celery(app)
 
 # @celery.on_after_configure.connect
 # def setup_periodic_tasks(sender, **kwargs):

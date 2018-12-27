@@ -1,7 +1,8 @@
+import os
 import random
 import time
 import pprint
-
+from flask import current_app
 from celery.signals import task_postrun
 from celery.utils.log import get_task_logger
 
@@ -60,7 +61,6 @@ def save_metadata(db_id):
     print('calling save meta data')
     pprint.pprint(db_id)
     database = Database.query.get(db_id)
-    print(database)
     database.dbname = 'change'
     db.session.commit()
 
