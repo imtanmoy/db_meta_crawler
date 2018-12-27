@@ -62,6 +62,8 @@ def save_metadata(db_id):
     pprint.pprint(db_id)
     database = Database.query.get(db_id)
     tables = database.save_remote_tables
+    for table in tables:
+        columns = table.save_remote_columns
 
 
 @task_postrun.connect
