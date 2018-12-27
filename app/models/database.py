@@ -1,5 +1,9 @@
+import pprint
+
 from app import db
 from sqlalchemy import create_engine, MetaData
+
+from app.models.table import Table
 
 
 class Database(db.Model):
@@ -12,7 +16,7 @@ class Database(db.Model):
     hostname = db.Column(db.String(80), nullable=False, )
     dbname = db.Column(db.String(80), nullable=False)
 
-    # tables = db.relationship('Table', backref=db.backref('databases', lazy='joined'), lazy='dynamic')
+    tables = db.relationship('Table', backref=db.backref('databases', lazy='joined'), lazy='dynamic')
 
     def __init__(self, dbtype, username, password, hostname, dbname):
         self.dbtype = dbtype
@@ -56,7 +60,7 @@ class Database(db.Model):
             'host': self.hostname,
             'port': 3306,
             'dbname': self.dbname,
-            # 'tables': [table.to_json for table in self.tables]
+            'tables': [table.to_json for table in self.tables]
         }
         return json_database
 
@@ -71,14 +75,14 @@ class Database(db.Model):
         else:
             return None
 
-    # @property
-    # def save_remote_tables(self):
-    #     new_tables = []
-    #     for tt in self.get_remote_tables:
-    #         pprint.pprint(getattr(tt, 'name'))
-    #         table_db = Table(table_name=getattr(tt, 'name'))
-    #         self.tables.append(table_db)
-    #         db.session.add(table_db)
-    #         db.session.commit()
-    #         new_tables.append(table_db)
-    #     return new_tables
+    @property
+    def save_remote_tables(self):
+        new_tables = []
+        for tt in self.get_remote_tables:
+            pprint.pprint(getattr(tt, 'name'))
+            table_db = Table(table_name=getattr(tt, 'name'))
+            self.tables.append(table_db)
+            db.session.add(table_db)
+            db.session.commit()
+            new_tables.append(table_db)
+        return new_tables

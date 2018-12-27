@@ -61,8 +61,7 @@ def save_metadata(db_id):
     print('calling save meta data')
     pprint.pprint(db_id)
     database = Database.query.get(db_id)
-    database.dbname = 'change'
-    db.session.commit()
+    tables = database.save_remote_tables
 
 
 @task_postrun.connect

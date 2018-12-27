@@ -9,6 +9,15 @@ done
 
 echo "MySql started"
 
+#flask db downgrade
+
+if [[ -d "migrations" ]]; then
+    flask db migrate
+else
+    flask db init
+    flask db migrate
+fi
+
 flask db upgrade
 
 flask run -h 0.0.0.0
