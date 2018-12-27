@@ -14,8 +14,8 @@ class Column(db.Model):
     table_id = db.Column(db.Integer, db.ForeignKey('tables.id'))
     table = db.relationship('Table')
 
-    # foreign_key = db.relationship('ForeignKey', backref=db.backref('foreign_key', lazy='joined', uselist=False),
-    #                               lazy='dynamic', foreign_keys='ForeignKey.column_id')
+    foreign_key = db.relationship('ForeignKey', backref=db.backref('foreign_key', lazy='joined', uselist=False),
+                                  lazy='dynamic', foreign_keys='ForeignKey.column_id')
 
     def __init__(self, column_name, column_type, column_default, is_nullable, is_autoincrement=False, is_pk=False):
         self.column_name = column_name

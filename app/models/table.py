@@ -1,5 +1,6 @@
 from app import db
 from app.models.column import Column
+from app.models.foreignkey import ForeignKey
 
 
 class Table(db.Model):
@@ -11,6 +12,12 @@ class Table(db.Model):
     database = db.relationship('Database')
 
     columns = db.relationship('Column', backref=db.backref('tables', lazy='joined'), lazy='dynamic')
+
+    relations = db.relationship('ForeignKey', backref=db.backref('relations', lazy='joined'), lazy='dynamic',
+                                foreign_keys='ForeignKey.table_id')
+    referred_relations = db.relationship('ForeignKey', backref=db.backref('referred_relations', lazy='joined'),
+                                         lazy='dynamic',
+                                         foreign_keys='ForeignKey.referred_table_id')
 
     def __init__(self, table_name):
         self.table_name = table_name
@@ -29,6 +36,8 @@ class Table(db.Model):
             'table_name': self.table_name,
             'database_id': self.database_id,
             'columns': [column.to_json for column in self.columns],
+            'relations': [relation.to_json for relation in self.relations],
+            'referred_relations': [referred_relation.to_json for referred_relation in self.referred_relations]
         }
         return json_table
 
@@ -58,4 +67,13 @@ class Table(db.Model):
             db.session.add(ncol)
             db.session.commit()
             new_columns.append(ncol)
+            fks = getattr(column, 'foreign_keys')
+            if len(fks) > 0:
+                parent = str(getattr(next(iter(fks)), '_colspec')).split('.')[0]
+                parent_table = Table.query.filter_by(table_name=parent, database_id=self.database_id).first()
+                scol = Column.query.filter_by(column_name=ncol.column_name, table_id=parent_table.id).first()
+                fk_key = ForeignKey(column_id=ncol.id, table_id=ncol.table_id, referred_column_id=scol.id,
+                                    referred_table_id=scol.table_id)
+                db.session.add(fk_key)
+                db.session.commit()
         return new_columns
