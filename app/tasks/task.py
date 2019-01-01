@@ -92,25 +92,43 @@ def reverse_messages():
 
 @celery.task(base=SQLASessionTask, bind=True)
 def save_metadata(self, db_id):
-    """Reverse all messages in DB"""
-    print('calling save meta data')
-    pprint.pprint(db_id)
+    """saving all meta data from database conn"""
     db_session = self.session
     # database = Database.query.get(db_id)
     database = db_session.query(Database).get(db_id)
-    pprint.pprint(database)
     # tables = database.save_remote_tables
     new_tables = []
+    time.sleep(1)
+    total = 0
+    current = 0
+    message = 'pending'
+    self.update_state(state='PROGRESS',
+                      meta={'current': current, 'total': total,
+                            'status': message})
+    # pprint.pprint('Total Tables in database--->')
+    # pprint.pprint(len(database.get_remote_tables))
+    total = total + len(database.get_remote_tables)
+    self.update_state(state='PROGRESS',
+                      meta={'current': current, 'total': total,
+                            'status': message})
     for tt in database.get_remote_tables:
-        pprint.pprint(getattr(tt, 'name'))
         table_db = Table(table_name=getattr(tt, 'name'))
         database.tables.append(table_db)
         db_session.add(table_db)
         db_session.commit()
         new_tables.append(table_db)
-    print(new_tables)
+        time.sleep(1)
+        current += 1
+        self.update_state(state='PROGRESS',
+                          meta={'current': current, 'total': total,
+                                'status': message})
     for table in new_tables:
-        new_columns = []
+        # pprint.pprint('Total Columns in a table---->')
+        # pprint.pprint(len(table.get_remote_columns))
+        total = total + len(table.get_remote_columns)
+        self.update_state(state='PROGRESS',
+                          meta={'current': current, 'total': total,
+                                'status': message})
         for column in table.get_remote_columns:
             ncol = Column(column_name=getattr(column, 'name'),
                           column_type=getattr((getattr(column, 'type')), '__visit_name__'),
@@ -121,7 +139,7 @@ def save_metadata(self, db_id):
             table.columns.append(ncol)
             db_session.add(ncol)
             db_session.commit()
-            new_columns.append(ncol)
+            time.sleep(1)
             fks = getattr(column, 'foreign_keys')
             if len(fks) > 0:
                 parent = str(getattr(next(iter(fks)), '_colspec')).split('.')[0]
@@ -135,9 +153,12 @@ def save_metadata(self, db_id):
                                     referred_table_id=scol.table_id)
                 db_session.add(fk_key)
                 db_session.commit()
-    # return new_tables
-    # for table in tables:
-    #     columns = table.save_remote_columns
+            current += 1
+            self.update_state(state='PROGRESS',
+                              meta={'current': current, 'total': total,
+                                    'status': message})
+    return {'current': current, 'total': total, 'status': 'completed',
+            'result': database.id}
 
 
 @task_postrun.connect

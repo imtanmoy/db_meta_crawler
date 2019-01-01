@@ -18,8 +18,8 @@ class DBConnectionAPI(MethodView):
                                 dbname=post_data['dbname'])
             db.session.add(database)
             db.session.commit()
-            res = save_metadata.delay(database.id)
-            return make_response(jsonify(database.to_json)), 201
+            task = save_metadata.delay(database.id)
+            return make_response(jsonify({'data': database.to_json, 'task_id': task.task_id})), 201
         except Exception as e:
             current_app.logger.error(str(e))
             response_object = {
