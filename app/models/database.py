@@ -58,7 +58,6 @@ class Database(db.Model):
             'username': self.username,
             'password': self.password,
             'host': self.hostname,
-            'port': 3306,
             'dbname': self.dbname,
             'tables': [table.to_json for table in self.tables]
         }
@@ -74,15 +73,3 @@ class Database(db.Model):
             return 'postgresql+psycopg2'
         else:
             return None
-
-    @property
-    def save_remote_tables(self):
-        new_tables = []
-        for tt in self.get_remote_tables:
-            pprint.pprint(getattr(tt, 'name'))
-            table_db = Table(table_name=getattr(tt, 'name'))
-            self.tables.append(table_db)
-            db.session.add(table_db)
-            db.session.commit()
-            new_tables.append(table_db)
-        return new_tables

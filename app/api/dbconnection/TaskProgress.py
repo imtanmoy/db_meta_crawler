@@ -1,7 +1,5 @@
-from flask import request, make_response, jsonify, current_app
+from flask import make_response, jsonify, current_app
 from flask.views import MethodView
-from app.models.database import Database
-from app import db
 from app.tasks.task import save_metadata
 
 
