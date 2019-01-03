@@ -24,13 +24,11 @@ class SQLASessionTask(celery.Task):
     _session = None
 
     def __call__(self, *args, **kwargs):
-        print("CALLED!")
         return super(SQLASessionTask, self).__call__(*args, **kwargs)
 
     @property
     def session(self):
         app = current_app
-        print(app.config['SQLALCHEMY_DATABASE_URI'])
         if self._session is None:
             engine = create_engine(
                 app.config['SQLALCHEMY_DATABASE_URI'], convert_unicode=True, echo_pool=True)
@@ -93,72 +91,50 @@ def reverse_messages():
 @celery.task(base=SQLASessionTask, bind=True)
 def save_metadata(self, db_id):
     """saving all meta data from database conn"""
-    db_session = self.session
-    # database = Database.query.get(db_id)
-    database = db_session.query(Database).get(db_id)
-    # tables = database.save_remote_tables
-    new_tables = []
-    time.sleep(1)
     total = 0
     current = 0
     message = 'pending'
-    self.update_state(state='PROGRESS',
-                      meta={'current': current, 'total': total,
-                            'status': message})
-    # pprint.pprint('Total Tables in database--->')
-    # pprint.pprint(len(database.get_remote_tables))
-    total = total + len(database.get_remote_tables)
-    self.update_state(state='PROGRESS',
-                      meta={'current': current, 'total': total,
-                            'status': message})
-    for tt in database.get_remote_tables:
-        table_db = Table(table_name=getattr(tt, 'name'))
-        database.tables.append(table_db)
-        db_session.add(table_db)
-        db_session.commit()
-        new_tables.append(table_db)
-        time.sleep(1)
-        current += 1
+    try:
+        db_session = self.session
+        # database = Database.query.get(db_id)
+        database = db_session.query(Database).get(db_id)
+        new_tables = []
         self.update_state(state='PROGRESS',
                           meta={'current': current, 'total': total,
                                 'status': message})
-    for table in new_tables:
-        # pprint.pprint('Total Columns in a table---->')
-        # pprint.pprint(len(table.get_remote_columns))
-        total = total + len(table.get_remote_columns)
+        # pprint.pprint('Total Tables in database--->')
+        total = total + len(database.get_remote_tables)
+        print(database.get_remote_tables)
         self.update_state(state='PROGRESS',
                           meta={'current': current, 'total': total,
                                 'status': message})
-        for column in table.get_remote_columns:
-            ncol = Column(column_name=getattr(column, 'name'),
-                          column_type=getattr((getattr(column, 'type')), '__visit_name__'),
-                          column_default=getattr(column, 'default'),
-                          is_nullable=getattr(column, 'nullable'),
-                          is_autoincrement=False if getattr(column, 'autoincrement') == 'auto' else True,
-                          is_pk=getattr(column, 'primary_key'))
-            table.columns.append(ncol)
-            db_session.add(ncol)
-            db_session.commit()
-            time.sleep(1)
-            fks = getattr(column, 'foreign_keys')
-            if len(fks) > 0:
-                parent = str(getattr(next(iter(fks)), '_colspec')).split('.')[0]
-                # parent_table = Table.query.filter_by(table_name=parent, database_id=db_id).first()
-                parent_table = db_session.query(Table).filter(Table.table_name == parent,
-                                                              Table.database_id == db_id).first()
-                # scol = Column.query.filter_by(column_name=ncol.column_name, table_id=parent_table.id).first()
-                scol = db_session.query(Column).filter(Column.column_name == ncol.column_name,
-                                                       Column.table_id == parent_table.id).first()
-                fk_key = ForeignKey(column_id=ncol.id, table_id=ncol.table_id, referred_column_id=scol.id,
-                                    referred_table_id=scol.table_id)
-                db_session.add(fk_key)
-                db_session.commit()
+        for tt in database.get_remote_tables:
+            table_db = save_table(tt, database, db_session)
+            new_tables.append(table_db)
             current += 1
             self.update_state(state='PROGRESS',
                               meta={'current': current, 'total': total,
                                     'status': message})
-    return {'current': current, 'total': total, 'status': 'completed',
-            'result': database.id}
+        for table in new_tables:
+            # pprint.pprint('Total Columns in a table---->')
+            total = total + len(table.get_remote_columns)
+            self.update_state(state='PROGRESS',
+                              meta={'current': current, 'total': total,
+                                    'status': message})
+            for column in table.get_remote_columns:
+                new_column = save_column(column, table, db_session)
+                save_fk(column, new_column, db_id, db_session)
+                current += 1
+                self.update_state(state='PROGRESS',
+                                  meta={'current': current, 'total': total,
+                                        'status': message})
+        return {'current': current, 'total': total, 'status': 'completed',
+                'result': database.id}
+    except Exception as e:
+        current_app.logger.error(str(e))
+        # return {'current': current, 'total': total, 'status': str(e),
+        # 'result': db_id}
+        raise e
 
 
 @task_postrun.connect
@@ -181,3 +157,42 @@ def init_celery_flask_app(**kwargs):
     print('worker init')
     # app = create_app(os.getenv('FLASK_CONFIG') or 'default')
     # app.app_context().push()
+
+
+def save_table(tt, database, session):
+    table_db = Table(table_name=getattr(tt, 'name'))
+    database.tables.append(table_db)
+    session.add(table_db)
+    session.commit()
+    return table_db
+
+
+def save_column(column, table, session):
+    ncol = Column(column_name=getattr(column, 'name'),
+                  column_type=getattr((getattr(column, 'type')), '__visit_name__'),
+                  # column_default=str(getattr(column, 'default')),
+                  column_default=None,
+                  is_nullable=getattr(column, 'nullable'),
+                  is_autoincrement=False if getattr(column, 'autoincrement') == 'auto' or getattr(column,
+                                                                                                  'autoincrement') == True else True,
+                  is_pk=getattr(column, 'primary_key'))
+    table.columns.append(ncol)
+    session.add(ncol)
+    session.commit()
+    return ncol
+
+
+def save_fk(column, new_column, db_id, session):
+    fks = getattr(column, 'foreign_keys')
+    if len(fks) > 0:
+        parent = str(getattr(next(iter(fks)), '_colspec')).split('.')[0]
+        # parent_table = Table.query.filter_by(table_name=parent, database_id=db_id).first()
+        parent_table = session.query(Table).filter(Table.table_name == parent,
+                                                   Table.database_id == db_id).first()
+        # scol = Column.query.filter_by(column_name=ncol.column_name, table_id=parent_table.id).first()
+        scol = session.query(Column).filter(Column.column_name == new_column.column_name,
+                                            Column.table_id == parent_table.id).first()
+        fk_key = ForeignKey(column_id=new_column.id, table_id=new_column.table_id, referred_column_id=scol.id,
+                            referred_table_id=scol.table_id)
+        session.add(fk_key)
+        session.commit()

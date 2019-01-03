@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-celery -A celery_worker:celery worker --loglevel=INFO
+watchmedo auto-restart -- celery -A celery_worker:celery worker --loglevel=INFO
