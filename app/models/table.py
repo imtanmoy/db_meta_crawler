@@ -52,3 +52,42 @@ class Table(db.Model):
     @property
     def get_remote_columns(self):
         return self.get_remote_db_metadata.tables[self.table_name].columns
+
+    def get_number_of_columns(self):
+        return len(self.columns)
+
+    def get_columns(self):
+        return self.columns
+
+    def get_column_by_name(self, column_name):
+        for column in self.columns:
+            if column.column_name == column_name:
+                return column
+
+    def get_primary_keys(self):
+        primary_keys = []
+        for column in self.columns:
+            if column.is_primary():
+                primary_keys.append(column)
+        return primary_keys
+
+    def get_primary_key_names(self):
+        primary_keys = []
+        for column in self.columns:
+            if column.is_primary():
+                primary_keys.append(column.column_name)
+        return primary_keys
+
+    def get_foreign_keys(self):
+        foreign_keys = []
+        for column in self.columns:
+            if column.is_foreign():
+                foreign_keys.append(column)
+        return foreign_keys
+
+    def get_foreign_key_names(self):
+        foreign_keys = []
+        for column in self.columns:
+            if column.is_foreign():
+                foreign_keys.append(column.column_name)
+        return foreign_keys

@@ -3,7 +3,31 @@ import pprint
 from app import db
 from sqlalchemy import create_engine, MetaData
 
-from app.models.table import Table
+
+class Color:
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
+
+def without_color():
+    Color.PURPLE = ''
+    Color.CYAN = ''
+    Color.DARKCYAN = ''
+    Color.BLUE = ''
+    Color.GREEN = ''
+    Color.YELLOW = ''
+    Color.RED = ''
+    Color.BOLD = ''
+    Color.UNDERLINE = ''
+    Color.END = ''
 
 
 class Database(db.Model):
@@ -73,3 +97,76 @@ class Database(db.Model):
             return 'postgresql+psycopg2'
         else:
             return None
+
+    def get_number_of_tables(self):
+        return len(self.tables)
+
+    def get_tables(self):
+        return self.tables
+
+    def get_column_with_this_name(self, name):
+        for table in self.tables:
+            for column in table.get_columns():
+                if column.column_name == name:
+                    return column
+
+    def get_table_by_name(self, table_name):
+        for table in self.tables:
+            if table.table_name == table_name:
+                return table
+
+    def get_tables_into_dictionary(self):
+        data = {}
+        for table in self.tables:
+            data[table.name] = []
+            for column in table.get_columns():
+                data[table.table_name].append(column.column_name)
+        return data
+
+    def get_primary_keys_by_table(self):
+        data = {}
+        for table in self.tables:
+            data[table.table_name] = table.get_primary_keys()
+        return data
+
+    def get_foreign_keys_by_table(self):
+        data = {}
+        for table in self.tables:
+            data[table.table_name] = table.get_foreign_keys()
+        return data
+
+    def get_primary_keys_of_table(self, table_name):
+        for table in self.tables:
+            if table.table_name == table_name:
+                return table.get_primary_keys()
+
+    def get_primary_key_names_of_table(self, table_name):
+        for table in self.tables:
+            if table.table_name == table_name:
+                return table.get_primary_key_names()
+
+    def get_foreign_keys_of_table(self, table_name):
+        for table in self.tables:
+            if table.table_name == table_name:
+                return table.get_foreign_keys()
+
+    def get_foreign_key_names_of_table(self, table_name):
+        for table in self.tables:
+            if table.table_name == table_name:
+                return table.get_foreign_key_names()
+
+    def print_me(self):
+        for table in self.tables:
+            print('+-------------------------------------+')
+            print("| %25s           |" % (table.name.upper()))
+            print('+-------------------------------------+')
+            for column in table.columns:
+                if column.is_primary():
+                    print("| 🔑 %31s           |" % (
+                            Color.BOLD + column.name + ' (' + column.get_type() + ')' + Color.END))
+                elif column.is_foreign():
+                    print("| #️⃣ %31s           |" % (
+                            Color.ITALIC + column.name + ' (' + column.get_type() + ')' + Color.END))
+                else:
+                    print("|   %23s           |" % (column.name + ' (' + column.get_type() + ')'))
+            print('+-------------------------------------+\n')
