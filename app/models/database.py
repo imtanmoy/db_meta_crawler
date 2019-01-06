@@ -1,5 +1,7 @@
 import pprint
 
+from sqlalchemy.engine.reflection import Inspector
+
 from app import db
 from sqlalchemy import create_engine, MetaData
 
@@ -66,11 +68,31 @@ class Database(db.Model):
         url = self.get_sqlalchemy_uri
         return create_engine(url)
 
+    def get_remote_inspector(self):
+        return Inspector.from_engine(self.get_sqla_engine)
+
     def get_remote_metadata(self):
         return MetaData(self.get_sqla_engine, reflect=True)
 
     def get_remote_tables(self):
-        return self.get_remote_metadata().sorted_tables
+        insp = self.get_remote_inspector()
+        tables = []
+        for tt in insp.get_sorted_table_and_fkc_names(schema=insp.default_schema_name):
+            if tt[0] is not None:
+                tables.append(tt[0])
+        return tables
+
+    def get_remote_columns(self, table_name):
+        insp = self.get_remote_inspector()
+        return insp.get_columns(table_name=table_name, schema=insp.default_schema_name)
+
+    def get_remote_primary_keys(self, table_name):
+        insp = self.get_remote_inspector()
+        return insp.get_primary_keys(table_name=table_name, schema=insp.default_schema_name)
+
+    def get_remote_foreign_keys(self, table_name):
+        insp = self.get_remote_inspector()
+        return insp.get_foreign_keys(table_name=table_name, schema=insp.default_schema_name)
 
     @property
     def to_json(self):

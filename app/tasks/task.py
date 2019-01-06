@@ -107,26 +107,57 @@ def save_metadata(self, db_id):
         self.update_state(state='PROGRESS',
                           meta={'current': current, 'total': total,
                                 'status': message})
-        for tt in database.get_remote_tables():
-            table_db = save_table(tt, database, db_session)
+        for table_name in database.get_remote_tables():
+            table_db = save_table(table_name, database, db_session)
             new_tables.append(table_db)
             current += 1
             self.update_state(state='PROGRESS',
                               meta={'current': current, 'total': total,
                                     'status': message})
         for table in new_tables:
-            # pprint.pprint('Total Columns in a table---->')
-            total = total + len(table.get_remote_columns())
+            total = total + len(database.get_remote_columns(table_name=table.table_name))
             self.update_state(state='PROGRESS',
                               meta={'current': current, 'total': total,
                                     'status': message})
-            for column in table.get_remote_columns():
+            columns = []
+            for column in database.get_remote_columns(table_name=table.table_name):
                 new_column = save_column(column, table, db_session)
-                save_fk(column, new_column, db_id, db_session)
+                columns.append(new_column)
                 current += 1
                 self.update_state(state='PROGRESS',
                                   meta={'current': current, 'total': total,
                                         'status': message})
+            for pk in database.get_remote_primary_keys(table_name=table.table_name):
+                pk_column = db_session.query(Column).filter(Column.column_name == pk,
+                                                            Column.table_id == table.id).first()
+                pk_column.is_pk = True
+                db_session.add(pk_column)
+                db_session.commit()
+
+            for fk in database.get_remote_foreign_keys(table_name=table.table_name):
+                fk_column = db_session.query(Column).filter(Column.column_name == fk['constrained_columns'][0],
+                                                            Column.table_id == table.id).first()
+                fk_column.is_fk = True
+                db_session.add(fk_column)
+                db_session.commit()
+
+        for table in new_tables:
+            for column in table.columns:
+                if column.is_fk is True:
+                    for fk in database.get_remote_foreign_keys(table_name=table.table_name):
+                        if column.column_name == fk['constrained_columns'][0]:
+                            referred_table = db_session.query(Table).filter(Table.table_name == fk['referred_table'],
+                                                                            Table.database_id == database.id) \
+                                .first()
+                            referred_column = db_session.query(Column) \
+                                .filter(Column.column_name == fk['referred_columns'][0],
+                                        Column.table_id == referred_table.id).first()
+                            fk_key = ForeignKey(column_id=column.id, table_id=column.table_id,
+                                                referred_column_id=referred_column.id,
+                                                referred_table_id=referred_table.id)
+                            db_session.add(fk_key)
+                            db_session.commit()
+
         return {'current': current, 'total': total, 'status': 'completed',
                 'result': database.id}
     except Exception as e:
@@ -158,8 +189,8 @@ def init_celery_flask_app(**kwargs):
     # app.app_context().push()
 
 
-def save_table(tt, database, session):
-    table_db = Table(table_name=getattr(tt, 'name'))
+def save_table(table_name, database, session):
+    table_db = Table(table_name=table_name)
     database.tables.append(table_db)
     session.add(table_db)
     session.commit()
@@ -167,15 +198,11 @@ def save_table(tt, database, session):
 
 
 def save_column(column, table, session):
-    ncol = Column(column_name=getattr(column, 'name'),
-                  column_type=getattr((getattr(column, 'type')), '__visit_name__'),
-                  # column_default=str(getattr(column, 'default')),
-                  column_default=None,
-                  is_nullable=getattr(column, 'nullable'),
-                  is_autoincrement=False if getattr(column, 'autoincrement') == 'auto' or getattr(column,
-                                                                                                  'autoincrement') == True else True,
-                  is_pk=getattr(column, 'primary_key'),
-                  is_fk=True if len(getattr(column, 'foreign_keys')) > 0 else False)
+    ncol = Column(column_name=str(column.get('name', 'default_column_name')),
+                  column_type=str(getattr(column.get('type'), '__visit_name__')),
+                  column_default=column.get('default', None),
+                  is_nullable=bool(column.get('nullable', True)),
+                  is_autoincrement=bool(column.get('autoincrement', False)))
     table.columns.append(ncol)
     session.add(ncol)
     session.commit()

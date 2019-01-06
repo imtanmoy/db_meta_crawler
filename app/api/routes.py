@@ -34,6 +34,17 @@ def get_my_ip():
     return jsonify({'ip': request.environ.get('HTTP_X_REAL_IP', request.remote_addr)}), 200
 
 
+@api_blueprint.route("/recreate", methods=["GET"])
+def recreate():
+    db.drop_all()
+    db.create_all()
+    db.session.commit()
+    return jsonify({
+        'status': 'success',
+        'message': 'pong!'
+    })
+
+
 @api_blueprint.route('/')
 def longtask():
     """add a new task and start running it after 10 seconds"""
