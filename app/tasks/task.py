@@ -91,10 +91,13 @@ def reverse_messages():
 @celery.task(base=SQLASessionTask, bind=True)
 def save_metadata(self, db_id):
     """saving all meta data from database conn"""
-    total = 0
+    total = 100
     current = 0
     message = 'pending'
     db_session = self.session
+    self.update_state(state='PROGRESS',
+                      meta={'current': current, 'total': total,
+                            'status': message})
     try:
         # database = Database.query.get(db_id)
         database = db_session.query(Database).get(db_id)
