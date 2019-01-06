@@ -36,8 +36,11 @@ class Table(db.Model):
             'table_name': self.table_name,
             'database_id': self.database_id,
             'columns': [column.to_json for column in self.columns],
-            'relations': [relation.to_json for relation in self.relations],
-            'referred_relations': [referred_relation.to_json for referred_relation in self.referred_relations]
+            # 'primary_keys': self.get_primary_key_names(),
+            'relations': self.get_relations(),
+            'reverse_relations': self.get_reverse_relations(),
+            # 'relations': [relation.to_json for relation in self.relations],
+            # 'referred_relations': [referred_relation.to_json for referred_relation in self.referred_relations]
         }
         return json_table
 
@@ -88,3 +91,29 @@ class Table(db.Model):
             if column.is_foreign():
                 foreign_keys.append(column.column_name)
         return foreign_keys
+
+    def get_relations(self):
+        keys = []
+        for relation in self.relations:
+            key = {
+                'self_column_name': relation.column.column_name,
+                'referred_column_id': relation.referred_column_id,
+                'referred_column': relation.referred_column.column_name,
+                'referred_table_id': relation.referred_table_id,
+                'referred_table': relation.referred_table.table_name
+            }
+            keys.append(key)
+        return keys
+
+    def get_reverse_relations(self):
+        keys = []
+        for relation in self.referred_relations:
+            key = {
+                'self_column_name': relation.referred_column.column_name,
+                'reverse_column_name': relation.column.column_name,
+                'reverse_column_id': relation.column_id,
+                'reverse_table_name': relation.table.table_name,
+                'reverse_table_id': relation.table_id,
+            }
+            keys.append(key)
+        return keys
