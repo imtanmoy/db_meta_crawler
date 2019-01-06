@@ -94,16 +94,12 @@ def save_metadata(self, db_id):
     total = 0
     current = 0
     message = 'pending'
+    db_session = self.session
     try:
-        db_session = self.session
         # database = Database.query.get(db_id)
         database = db_session.query(Database).get(db_id)
+        total = prepare_metadata(database)
         new_tables = []
-        self.update_state(state='PROGRESS',
-                          meta={'current': current, 'total': total,
-                                'status': message})
-        # pprint.pprint('Total Tables in database--->')
-        total = total + len(database.get_remote_tables())
         self.update_state(state='PROGRESS',
                           meta={'current': current, 'total': total,
                                 'status': message})
@@ -115,10 +111,6 @@ def save_metadata(self, db_id):
                               meta={'current': current, 'total': total,
                                     'status': message})
         for table in new_tables:
-            total = total + len(database.get_remote_columns(table_name=table.table_name))
-            self.update_state(state='PROGRESS',
-                              meta={'current': current, 'total': total,
-                                    'status': message})
             columns = []
             for column in database.get_remote_columns(table_name=table.table_name):
                 new_column = save_column(column, table, db_session)
@@ -133,6 +125,10 @@ def save_metadata(self, db_id):
                 pk_column.is_pk = True
                 db_session.add(pk_column)
                 db_session.commit()
+                current += 1
+                self.update_state(state='PROGRESS',
+                                  meta={'current': current, 'total': total,
+                                        'status': message})
 
             for fk in database.get_remote_foreign_keys(table_name=table.table_name):
                 fk_column = db_session.query(Column).filter(Column.column_name == fk['constrained_columns'][0],
@@ -140,6 +136,10 @@ def save_metadata(self, db_id):
                 fk_column.is_fk = True
                 db_session.add(fk_column)
                 db_session.commit()
+                current += 1
+                self.update_state(state='PROGRESS',
+                                  meta={'current': current, 'total': total,
+                                        'status': message})
 
         for table in new_tables:
             for column in table.columns:
@@ -157,6 +157,10 @@ def save_metadata(self, db_id):
                                                 referred_table_id=referred_table.id)
                             db_session.add(fk_key)
                             db_session.commit()
+                            current += 1
+                            self.update_state(state='PROGRESS',
+                                              meta={'current': current, 'total': total,
+                                                    'status': message})
 
         return {'current': current, 'total': total, 'status': 'completed',
                 'result': database.id}
@@ -223,3 +227,15 @@ def save_fk(column, new_column, db_id, session):
                             referred_table_id=scol.table_id)
         session.add(fk_key)
         session.commit()
+
+
+def prepare_metadata(database):
+    print('calculation')
+    total = 0
+    total = total + len(database.get_remote_tables())
+    for table_name in database.get_remote_tables():
+        total = total + len(database.get_remote_columns(table_name=table_name))
+        total = total + len(database.get_remote_primary_keys(table_name=table_name))
+        total = total + len(database.get_remote_foreign_keys(table_name=table_name)) * 2
+    print('calculation done')
+    return total
