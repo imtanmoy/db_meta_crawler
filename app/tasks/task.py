@@ -103,12 +103,11 @@ def save_metadata(self, db_id):
                           meta={'current': current, 'total': total,
                                 'status': message})
         # pprint.pprint('Total Tables in database--->')
-        total = total + len(database.get_remote_tables)
-        print(database.get_remote_tables)
+        total = total + len(database.get_remote_tables())
         self.update_state(state='PROGRESS',
                           meta={'current': current, 'total': total,
                                 'status': message})
-        for tt in database.get_remote_tables:
+        for tt in database.get_remote_tables():
             table_db = save_table(tt, database, db_session)
             new_tables.append(table_db)
             current += 1
@@ -117,11 +116,11 @@ def save_metadata(self, db_id):
                                     'status': message})
         for table in new_tables:
             # pprint.pprint('Total Columns in a table---->')
-            total = total + len(table.get_remote_columns)
+            total = total + len(table.get_remote_columns())
             self.update_state(state='PROGRESS',
                               meta={'current': current, 'total': total,
                                     'status': message})
-            for column in table.get_remote_columns:
+            for column in table.get_remote_columns():
                 new_column = save_column(column, table, db_session)
                 save_fk(column, new_column, db_id, db_session)
                 current += 1
@@ -175,7 +174,8 @@ def save_column(column, table, session):
                   is_nullable=getattr(column, 'nullable'),
                   is_autoincrement=False if getattr(column, 'autoincrement') == 'auto' or getattr(column,
                                                                                                   'autoincrement') == True else True,
-                  is_pk=getattr(column, 'primary_key'))
+                  is_pk=getattr(column, 'primary_key'),
+                  is_fk=True if len(getattr(column, 'foreign_keys')) > 0 else False)
     table.columns.append(ncol)
     session.add(ncol)
     session.commit()

@@ -66,13 +66,11 @@ class Database(db.Model):
         url = self.get_sqlalchemy_uri
         return create_engine(url)
 
-    @property
     def get_remote_metadata(self):
         return MetaData(self.get_sqla_engine, reflect=True)
 
-    @property
     def get_remote_tables(self):
-        return self.get_remote_metadata.sorted_tables
+        return self.get_remote_metadata().sorted_tables
 
     @property
     def to_json(self):
@@ -158,15 +156,15 @@ class Database(db.Model):
     def print_me(self):
         for table in self.tables:
             print('+-------------------------------------+')
-            print("| %25s           |" % (table.name.upper()))
+            print("| %25s           |" % (table.table_name.upper()))
             print('+-------------------------------------+')
             for column in table.columns:
                 if column.is_primary():
                     print("| 🔑 %31s           |" % (
-                            Color.BOLD + column.name + ' (' + column.get_type() + ')' + Color.END))
+                            Color.BOLD + column.column_name + ' (' + column.get_type() + ')' + Color.END))
                 elif column.is_foreign():
                     print("| #️⃣ %31s           |" % (
-                            Color.ITALIC + column.name + ' (' + column.get_type() + ')' + Color.END))
+                            Color.BOLD + column.column_name + ' (' + column.get_type() + ')' + Color.END))
                 else:
-                    print("|   %23s           |" % (column.name + ' (' + column.get_type() + ')'))
+                    print("|   %23s           |" % (column.column_name + ' (' + column.get_type() + ')'))
             print('+-------------------------------------+\n')

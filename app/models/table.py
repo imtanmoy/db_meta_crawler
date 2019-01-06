@@ -41,17 +41,14 @@ class Table(db.Model):
         }
         return json_table
 
-    @property
     def get_db(self):
         return self.database
 
-    @property
     def get_remote_db_metadata(self):
-        return self.database.get_remote_metadata
+        return self.database.get_remote_metadata()
 
-    @property
     def get_remote_columns(self):
-        return self.get_remote_db_metadata.tables[self.table_name].columns
+        return self.get_remote_db_metadata().tables[self.table_name].columns
 
     def get_number_of_columns(self):
         return len(self.columns)

@@ -45,6 +45,7 @@ class Column(db.Model):
             'is_nullable': self.is_nullable,
             'is_autoincrement': self.is_autoincrement,
             'is_pk': self.is_pk,
+            'is_fk': self.is_fk,
             'table_id': self.table_id
         }
         return json_column
@@ -59,8 +60,12 @@ class Column(db.Model):
             'is_nullable': self.is_nullable,
             'is_autoincrement': self.is_autoincrement,
             'is_pk': self.is_pk,
+            'is_fk': self.is_fk,
             'table_id': self.table_id
         }
+
+    def get_type(self):
+        return self.column_type
 
     def is_primary(self):
         return self.is_pk

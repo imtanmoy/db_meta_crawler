@@ -34,6 +34,7 @@ class DBConnectionAPI(MethodView):
     def get(self, db_id):
         try:
             database = Database.query.get(db_id)
+            database.print_me()
             return make_response(jsonify(database.to_json)), 200
         except Exception as e:
             current_app.logger.error(str(e))
