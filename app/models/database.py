@@ -1,9 +1,6 @@
-import pprint
-
 from sqlalchemy.engine.reflection import Inspector
-
-from app import db
 from sqlalchemy import create_engine, MetaData
+from app import db
 
 
 class Color:

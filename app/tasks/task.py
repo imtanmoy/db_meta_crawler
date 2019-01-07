@@ -1,7 +1,5 @@
-import os
 import random
 import time
-import pprint
 from flask import current_app
 from celery.signals import task_postrun, worker_process_init, task_prerun
 from celery.utils.log import get_task_logger
@@ -169,9 +167,11 @@ def save_metadata(self, db_id):
                 'result': database.id}
     except Exception as e:
         current_app.logger.error(str(e))
-        # return {'current': current, 'total': total, 'status': str(e),
-        # 'result': db_id}
-        raise e
+        message = 'failed'
+        error = str(e)
+        self.retry(exc=e, countdown=2, max_retries=2)
+    return {'current': current, 'total': total, 'status': message,
+            'result': db_id, 'error': error}
 
 
 @task_postrun.connect

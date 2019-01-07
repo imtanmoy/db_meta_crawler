@@ -1,6 +1,4 @@
 from app import db
-from app.models.column import Column
-from app.models.foreignkey import ForeignKey
 
 
 class Table(db.Model):
