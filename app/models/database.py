@@ -1,32 +1,14 @@
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine, MetaData, select, exc
+from sqlalchemy.orm import validates
+
 from app import db
 
-
-class Color:
-    PURPLE = '\033[95m'
-    CYAN = '\033[96m'
-    DARKCYAN = '\033[36m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-    END = '\033[0m'
-
-
-def without_color():
-    Color.PURPLE = ''
-    Color.CYAN = ''
-    Color.DARKCYAN = ''
-    Color.BLUE = ''
-    Color.GREEN = ''
-    Color.YELLOW = ''
-    Color.RED = ''
-    Color.BOLD = ''
-    Color.UNDERLINE = ''
-    Color.END = ''
+DATABASE_TYPES = {
+    'mysql': 'mysql',
+    'mssql': 'mssql+pymssql',
+    'postgresql': 'postgresql+psycopg2'
+}
 
 
 class Database(db.Model):
@@ -36,7 +18,7 @@ class Database(db.Model):
     dbtype = db.Column(db.String(80), nullable=False)
     username = db.Column(db.String(80), nullable=False)
     password = db.Column(db.String(80), nullable=False)
-    hostname = db.Column(db.String(80), nullable=False, )
+    hostname = db.Column(db.String(80), nullable=False)
     dbname = db.Column(db.String(80), nullable=False)
 
     tables = db.relationship('Table', backref=db.backref('databases', lazy='joined'), lazy='dynamic')
@@ -54,6 +36,38 @@ class Database(db.Model):
 
     def __repr__(self):
         return '<Database %r>' % self.id
+
+    @validates('dbtype')
+    def validate_dbtype(self, key, dbtype):
+        if not dbtype or len(dbtype) < 1:
+            raise AssertionError('No Database Type provided')
+        if dbtype not in DATABASE_TYPES:
+            raise AssertionError('Database Type is not Supported')
+        return dbtype
+
+    @validates('username')
+    def validate_username(self, key, username):
+        if not username or len(username) < 1:
+            raise AssertionError('No username provided')
+        return username
+
+    @validates('password')
+    def validate_password(self, key, password):
+        if not password or len(password) < 1:
+            raise AssertionError('No password provided')
+        return password
+
+    @validates('hostname')
+    def validate_hostname(self, key, hostname):
+        if not hostname or len(hostname) < 1:
+            raise AssertionError('No hostname provided')
+        return hostname
+
+    @validates('dbname')
+    def validate_dbname(self, key, dbname):
+        if not dbname or len(dbname) < 1:
+            raise AssertionError('No database name provided')
+        return dbname
 
     @property
     def get_sqlalchemy_uri(self):
@@ -106,14 +120,8 @@ class Database(db.Model):
 
     @property
     def get_sqlalchemy_driver(self):
-        if self.dbtype == 'mysql':
-            return 'mysql'
-        elif self.dbtype == 'mssql':
-            return 'mssql+pymssql'
-        elif self.dbtype == 'postgresql':
-            return 'postgresql+psycopg2'
-        else:
-            return None
+        if self.dbtype in DATABASE_TYPES:
+            return DATABASE_TYPES[self.dbtype]
 
     def get_number_of_tables(self):
         return len(self.tables)
@@ -172,18 +180,20 @@ class Database(db.Model):
             if table.table_name == table_name:
                 return table.get_foreign_key_names()
 
-    def print_me(self):
-        for table in self.tables:
-            print('+-------------------------------------+')
-            print("| %25s           |" % (table.table_name.upper()))
-            print('+-------------------------------------+')
-            for column in table.columns:
-                if column.is_primary():
-                    print("| 🔑 %31s           |" % (
-                            Color.BOLD + column.column_name + ' (' + column.get_type() + ')' + Color.END))
-                elif column.is_foreign():
-                    print("| #️⃣ %31s           |" % (
-                            Color.BOLD + column.column_name + ' (' + column.get_type() + ')' + Color.END))
-                else:
-                    print("|   %23s           |" % (column.column_name + ' (' + column.get_type() + ')'))
-            print('+-------------------------------------+\n')
+    def ping_connection(self):
+        engine = self.get_sqla_engine
+        connection = engine.connect()
+        save_should_close_with_result = connection.should_close_with_result
+        connection.should_close_with_result = False
+
+        try:
+            return connection.scalar(select([1]))
+        except exc.DBAPIError as err:
+            if err.connection_invalidated:
+                connection.scalar(select([1]))
+            else:
+                raise
+        finally:
+            # restore "close with result"
+            connection.should_close_with_result = save_should_close_with_result
+            connection.close()

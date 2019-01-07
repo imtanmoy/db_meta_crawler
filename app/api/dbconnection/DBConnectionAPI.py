@@ -14,13 +14,11 @@ class DBConnectionAPI(MethodView):
     def post(self):
         try:
             post_data = request.get_json()
-            ping = ping_database_connection(dbtype=post_data['dbtype'], username=post_data['username'],
-                                            password=post_data['password'], hostname=post_data['hostname'],
-                                            db_name=post_data['dbname'])
+            database = Database(dbtype=post_data['dbtype'], username=post_data['username'],
+                                password=post_data['password'], hostname=post_data['hostname'],
+                                dbname=post_data['dbname'])
+            ping = database.ping_connection()
             if ping is 1:
-                database = Database(dbtype=post_data['dbtype'], username=post_data['username'],
-                                    password=post_data['password'], hostname=post_data['hostname'],
-                                    dbname=post_data['dbname'])
                 db.session.add(database)
                 db.session.commit()
                 task = save_metadata.delay(database.id)
@@ -45,6 +43,15 @@ class DBConnectionAPI(MethodView):
         #         'reason': f'{msg}'
         #     }
         #     return make_response(jsonify(response_object)), 401
+        except AssertionError as err:
+            print(err)
+            print('error-----')
+            response_object = {
+                'status': 'fail',
+                'message': 'Some error occurred. Please try again.',
+                'reason': f'{str(err)}'
+            }
+            return make_response(jsonify(response_object)), 401
         except Exception as e:
             current_app.logger.error(str(e))
             response_object = {
@@ -70,44 +77,3 @@ class DBConnectionAPI(MethodView):
 
 # define the API resources
 dbconnection_view = DBConnectionAPI.as_view('dbconnection_api')
-
-
-def create_sqlalchemy_uri(sqlalchemy_driver, username, password, hostname, db_name):
-    return sqlalchemy_driver + "://" + username + ":" + password + "@" + hostname + "/" \
-           + db_name
-
-
-def create_sqla_engine(url):
-    return create_engine(url, isolation_level='READ UNCOMMITTED', pool_pre_ping=True)
-
-
-def create_sqlalchemy_driver(dbtype):
-    if dbtype == 'mysql':
-        return 'mysql'
-    elif dbtype == 'mssql':
-        return 'mssql+pymssql'
-    elif dbtype == 'postgresql':
-        return 'postgresql+psycopg2'
-    else:
-        return None
-
-
-def ping_database_connection(dbtype, username, password, hostname, db_name):
-    driver = create_sqlalchemy_driver(dbtype)
-    url = create_sqlalchemy_uri(driver, username, password, hostname, db_name)
-    engine = create_sqla_engine(url)
-    connection = engine.connect()
-    save_should_close_with_result = connection.should_close_with_result
-    connection.should_close_with_result = False
-
-    try:
-        return connection.scalar(select([1]))
-    except exc.DBAPIError as err:
-        if err.connection_invalidated:
-            connection.scalar(select([1]))
-        else:
-            raise
-    finally:
-        # restore "close with result"
-        connection.should_close_with_result = save_should_close_with_result
-        connection.close()
