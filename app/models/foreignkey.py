@@ -6,7 +6,7 @@ class ForeignKey(db.Model):
 
     id = db.Column(db.Integer(), primary_key=True)
 
-    column_id = db.Column(db.Integer, db.ForeignKey('columns.id'))
+    column_id = db.Column(db.Integer, db.ForeignKey('columns.id', ondelete="cascade"))
     column = db.relationship('Column', foreign_keys='ForeignKey.column_id')
 
     table_id = db.Column(db.Integer, db.ForeignKey('tables.id'))

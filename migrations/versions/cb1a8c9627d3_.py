@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: e63aa7c0b8b8
+Revision ID: cb1a8c9627d3
 Revises: 
-Create Date: 2019-01-06 11:42:18.359727
+Create Date: 2019-01-08 14:00:33.245948
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e63aa7c0b8b8'
+revision = 'cb1a8c9627d3'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -36,7 +36,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('table_name', sa.String(length=80), nullable=False),
     sa.Column('database_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['database_id'], ['databases.id'], ),
+    sa.ForeignKeyConstraint(['database_id'], ['databases.id'], ondelete='cascade'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('columns',
@@ -49,7 +49,7 @@ def upgrade():
     sa.Column('is_pk', sa.Boolean(), nullable=False),
     sa.Column('is_fk', sa.Boolean(), nullable=False),
     sa.Column('table_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['table_id'], ['tables.id'], ),
+    sa.ForeignKeyConstraint(['table_id'], ['tables.id'], ondelete='cascade'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('foreign_keys',
@@ -58,7 +58,7 @@ def upgrade():
     sa.Column('table_id', sa.Integer(), nullable=True),
     sa.Column('referred_column_id', sa.Integer(), nullable=True),
     sa.Column('referred_table_id', sa.Integer(), nullable=True),
-    sa.ForeignKeyConstraint(['column_id'], ['columns.id'], ),
+    sa.ForeignKeyConstraint(['column_id'], ['columns.id'], ondelete='cascade'),
     sa.ForeignKeyConstraint(['referred_column_id'], ['columns.id'], ),
     sa.ForeignKeyConstraint(['referred_table_id'], ['tables.id'], ),
     sa.ForeignKeyConstraint(['table_id'], ['tables.id'], ),

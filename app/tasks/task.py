@@ -166,6 +166,8 @@ def save_metadata(self, db_id):
         return {'current': current, 'total': total, 'status': 'completed',
                 'result': database.id}
     except Exception as e:
+        db_session.query(Table).filter(Table.database_id == db_id).delete()
+        db_session.commit()
         current_app.logger.error(str(e))
         message = 'failed'
         error = str(e)

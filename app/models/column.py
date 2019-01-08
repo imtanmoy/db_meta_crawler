@@ -12,10 +12,11 @@ class Column(db.Model):
     is_autoincrement = db.Column(db.Boolean, nullable=False, default=False)
     is_pk = db.Column(db.Boolean, nullable=False, default=False)
     is_fk = db.Column(db.Boolean, nullable=False, default=False)
-    table_id = db.Column(db.Integer, db.ForeignKey('tables.id'))
+    table_id = db.Column(db.Integer, db.ForeignKey('tables.id', ondelete="cascade"))
     table = db.relationship('Table')
 
-    foreign_key = db.relationship('ForeignKey', backref=db.backref('foreign_key', lazy='joined', uselist=False),
+    foreign_key = db.relationship('ForeignKey',
+                                  backref=db.backref('foreign_key', lazy='joined', uselist=False, cascade="all,delete"),
                                   lazy='dynamic', foreign_keys='ForeignKey.column_id')
 
     def __init__(self, column_name, column_type, column_default, is_nullable, is_autoincrement=False, is_pk=False,

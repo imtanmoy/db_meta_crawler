@@ -6,12 +6,14 @@ class Table(db.Model):
 
     id = db.Column(db.Integer(), primary_key=True)
     table_name = db.Column(db.String(80), nullable=False)
-    database_id = db.Column(db.Integer, db.ForeignKey('databases.id'))
+    database_id = db.Column(db.Integer, db.ForeignKey('databases.id', ondelete="cascade"))
     database = db.relationship('Database')
 
-    columns = db.relationship('Column', backref=db.backref('tables', lazy='joined'), lazy='dynamic')
+    columns = db.relationship('Column', backref=db.backref('tables', lazy='joined', cascade="all,delete"),
+                              lazy='dynamic')
 
-    relations = db.relationship('ForeignKey', backref=db.backref('relations', lazy='joined'), lazy='dynamic',
+    relations = db.relationship('ForeignKey', backref=db.backref('relations', lazy='joined', cascade="all,delete"),
+                                lazy='dynamic',
                                 foreign_keys='ForeignKey.table_id')
     referred_relations = db.relationship('ForeignKey', backref=db.backref('referred_relations', lazy='joined'),
                                          lazy='dynamic',

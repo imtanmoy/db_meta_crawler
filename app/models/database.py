@@ -21,7 +21,8 @@ class Database(db.Model):
     hostname = db.Column(db.String(80), nullable=False)
     dbname = db.Column(db.String(80), nullable=False)
 
-    tables = db.relationship('Table', backref=db.backref('databases', lazy='joined'), lazy='dynamic')
+    tables = db.relationship('Table', backref=db.backref('databases', lazy='joined', cascade="all,delete"),
+                             lazy='dynamic')
 
     def __init__(self, dbtype, username, password, hostname, dbname):
         self.dbtype = dbtype
