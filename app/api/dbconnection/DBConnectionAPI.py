@@ -1,9 +1,11 @@
 from flask import request, make_response, jsonify, current_app, url_for
 from flask.views import MethodView
-from sqlalchemy import create_engine, select, exc
+from sqlalchemy import exc
 from app.models.database import Database
 from app import db
 from app.tasks.task import save_metadata
+from app.schemas.input_db_conn_schema import input_db_conn_schema
+from app.schemas import validate_schema
 
 
 class DBConnectionAPI(MethodView):
@@ -11,6 +13,7 @@ class DBConnectionAPI(MethodView):
     DBConnection Registration Resource
     """
 
+    @validate_schema(input_db_conn_schema)
     def post(self):
         try:
             post_data = request.get_json()
@@ -44,8 +47,6 @@ class DBConnectionAPI(MethodView):
         #     }
         #     return make_response(jsonify(response_object)), 401
         except AssertionError as err:
-            print(err)
-            print('error-----')
             response_object = {
                 'status': 'fail',
                 'message': 'Some error occurred. Please try again.',
