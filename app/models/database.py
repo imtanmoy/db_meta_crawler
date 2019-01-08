@@ -1,6 +1,7 @@
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import create_engine, MetaData, select, exc
 from sqlalchemy.orm import validates
+import enum
 
 from app import db
 
@@ -9,6 +10,8 @@ DATABASE_TYPES = {
     'mssql': 'mssql+pymssql',
     'postgresql': 'postgresql+psycopg2'
 }
+
+DatabaseStatusTypes = ('pending', 'processed', 'failed')
 
 
 class Database(db.Model):
@@ -20,6 +23,8 @@ class Database(db.Model):
     password = db.Column(db.String(80), nullable=False)
     hostname = db.Column(db.String(80), nullable=False)
     dbname = db.Column(db.String(80), nullable=False)
+    status = db.Column(db.Enum(*DatabaseStatusTypes), default=DatabaseStatusTypes[0], nullable=False,
+                       server_default=DatabaseStatusTypes[0])
 
     tables = db.relationship('Table', backref=db.backref('databases', lazy='joined', cascade="all,delete"),
                              lazy='dynamic')
@@ -115,7 +120,8 @@ class Database(db.Model):
             'password': self.password,
             'host': self.hostname,
             'dbname': self.dbname,
-            'tables': [table.to_json for table in self.tables]
+            'tables': [table.to_json for table in self.tables],
+            'status': self.status
         }
         return json_database
 

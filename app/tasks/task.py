@@ -162,11 +162,17 @@ def save_metadata(self, db_id):
                             self.update_state(state='PROGRESS',
                                               meta={'current': current, 'total': total,
                                                     'status': message})
-
+        database.status = 'processed'
+        db_session.add(database)
+        db_session.commit()
         return {'current': current, 'total': total, 'status': 'completed',
                 'result': database.id}
     except Exception as e:
         db_session.query(Table).filter(Table.database_id == db_id).delete()
+        db_session.commit()
+        database = db_session.query(Database).filter(Database.id == db_id).first()
+        database.status = 'failed'
+        db_session.add(database)
         db_session.commit()
         current_app.logger.error(str(e))
         message = 'failed'
