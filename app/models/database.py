@@ -1,7 +1,6 @@
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy import create_engine, MetaData, select, exc
 from sqlalchemy.orm import validates
-import enum
 
 from app import db
 
@@ -80,16 +79,16 @@ class Database(db.Model):
         return self.get_sqlalchemy_driver + "://" + self.username + ":" + self.password + "@" + self.hostname + "/" \
                + self.dbname
 
-    @property
-    def get_sqla_engine(self):
+    def get_sqla_engine(self, **kwargs):
         url = self.get_sqlalchemy_uri
-        return create_engine(url)
+        return create_engine(url, pool_recycle=3600, pool_pre_ping=True, pool_timeout=30,
+                             connect_args=kwargs)
 
     def get_remote_inspector(self):
-        return Inspector.from_engine(self.get_sqla_engine)
+        return Inspector.from_engine(self.get_sqla_engine())
 
     def get_remote_metadata(self):
-        return MetaData(self.get_sqla_engine, reflect=True)
+        return MetaData(self.get_sqla_engine(), reflect=True)
 
     def get_remote_tables(self):
         insp = self.get_remote_inspector()
@@ -188,7 +187,14 @@ class Database(db.Model):
                 return table.get_foreign_key_names()
 
     def ping_connection(self):
-        engine = self.get_sqla_engine
+        if self.dbtype == 'mysql':
+            engine = self.get_sqla_engine(connect_timeout=10)
+        elif self.dbtype == 'mssql':
+            engine = self.get_sqla_engine(login_timeout=10, timeout=10)
+        elif self.dbtype == 'postgresql':
+            engine = self.get_sqla_engine(connect_timeout=10)
+        else:
+            engine = self.get_sqla_engine()
         connection = engine.connect()
         save_should_close_with_result = connection.should_close_with_result
         connection.should_close_with_result = False
@@ -204,3 +210,4 @@ class Database(db.Model):
             # restore "close with result"
             connection.should_close_with_result = save_should_close_with_result
             connection.close()
+            engine.dispose()
